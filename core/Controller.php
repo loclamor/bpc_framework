@@ -12,6 +12,8 @@
  */
 abstract class Controller {
 	
+	public $isJSON = false;
+	
 	public function getAction( $action ){
 		$action = firstchartolower( $action );
 		$this->$action();
@@ -25,6 +27,11 @@ abstract class Controller {
 			ob_start();
 			require $pathView;
 			$content = ob_get_clean();
+		}
+		
+		if( $this->isJSON ) {
+			echo $content;
+			die();
 		}
 
 		return '<div id="'.$simpleName.'-'.$action.'" >'.$content.'</div>';
