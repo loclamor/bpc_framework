@@ -1,9 +1,32 @@
 <?php
 class Entite {
+	/**
+	 * String
+	 * class corresponding table name in DataBase (without TABLE_PREFIX)
+	 */
 	public $DB_table = '';
-	public $DB_equiv = array();
+	/**
+	 * Array
+	 * mapping between class members and DB attributes
+	 */
+	public $DB_equiv = array(); // classMember => DBAttr
+	/**
+	 * Array
+	 * mapping between class members and their type
+	 * Used by Form to automaticaly generate a HTML form element mapping members of the class
+	 * non listed members will not appears in HTML form, except the ID witch will be hidden if no specified
+	 * Type could be : varchar(length), text, date, integer, hidden
+	 */
+	public $memberType = array() // classMember => type
+	/**
+	 * the entite ID
+	 */
 	public $id;
 	
+	/**
+	 * Create a new Entite
+	 * @param ID $id optional, if defined, load the Entite identified by its ID from database
+	 */
 	public function __construct($id = null){
 		if(!is_null($id)){
 			if(array_key_exists('id', $this->DB_equiv)){
