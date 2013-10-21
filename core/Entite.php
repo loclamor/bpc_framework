@@ -40,10 +40,10 @@ class Entite {
 	}
 	
 	/**
-	 * charge l'objet � partir de la BD
-	 * @param integer $id_k le nom du champ en BD
-	 * @param integer $id_v la valeur du champs que l'on veut
-	 * ATTENTION : $id_v doit �tre unique en BD
+	 * load an object from the database
+	 * @param String $id_k database column name
+	 * @param undefined $id_v needed value
+	 * ATTENTION : $id_v must to be unique
 	 */
 	public function loadFromDB($id_k,$id_v){
 		$requete = 'SELECT * FROM '.TABLE_PREFIX.$this->DB_table.' WHERE '.$id_k.' = '.$id_v;
@@ -55,7 +55,9 @@ class Entite {
 		}
 	}
 	
-	//on va choper tous les getters en setters non d�finit
+	/**
+	 * catch undefined getters and setters
+	 */
 	public function __call($func,$args) {
 		if(APPLICATION_ENV == 'dev' ) {
 			echo '<span class="warning">WARNING creer la methode : '.$func.'('.')</span><br/>';
@@ -72,6 +74,12 @@ class Entite {
 		}
 	}
 	
+	/**
+	 * save the Entite in database
+	 * @param Array $toUpdate [optional] list the classMembers attributes to update in database. If null, all attributes will be updated
+	 * $toUpdate is not used in case of first save (SQL Insert)
+	 * @return true/falsein case of update, depending update success ; in case of first save (SQL Insert), return the new ID
+	 */
 	public function enregistrer($toUpdate = null) {
 		if(!is_null($this->id)) {
 			//update
@@ -119,6 +127,11 @@ class Entite {
 		}
 	}
 	
+	/**
+	 * Delete the Entite from the database
+	 * The corresponding class instance is not destroy and could be saved again (new SQL Insertion)
+	 * @return true on success
+	 */
 	public function supprimer(){
 		$requete = 'DELETE FROM '.TABLE_PREFIX.$this->DB_table;
 		$requete .= ' WHERE '.$this->DB_equiv['id'].' = '.$this->id;
