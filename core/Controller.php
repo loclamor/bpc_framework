@@ -12,7 +12,8 @@
  */
 abstract class Controller {
 	
-	public $isJSON = false;
+	public $isJSON = DEFAULT_JSON;
+        public $allowAllOrigin = DEFAULT_ALLOW_ALL_ORIGIN;
 	
 	public function getAction( $action ){
 		$action = firstchartolower( $action );
@@ -30,9 +31,11 @@ abstract class Controller {
 		}
 		
 		if( $this->isJSON ) {
-            header('Content-type: application/json; charset=utf-8');
-			echo $content;
-			die();
+                    if( $this->allowAllOrigin )
+                        header("Access-Control-Allow-Origin: *");
+                    header('Content-type: application/json; charset=utf-8');
+                    echo $content;
+                    die();
 		}
 
 		return '<div id="'.$simpleName.'-'.$action.'" >'.$content.'</div>';
