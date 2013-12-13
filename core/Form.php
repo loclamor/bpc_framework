@@ -39,6 +39,17 @@ class Form {
                         $length = substr( $type, 7, -1 );
                         $this->addInputText( $member, $ent->$get(), $length );
                     }
+                    else 
+                    //special case for enum
+                    if ( strtolower( substr( $type, 0, 4 ) ) == 'enum(' ) {
+                        $values = explode(",", substr( $type, 4, -1 ) );
+                        $this->addSelect( $member, $ent->$get(), $values );
+                    }
+                    else
+                    //default case, simple text
+                    {
+                        $this->addInputText( $member, $ent->$get());
+                    }
                     break;
             }
         }
@@ -62,5 +73,14 @@ class Form {
     
     private function addInputText( $name, $value, $length = 255 ) {
         $this->form .= '<input type="text" name="' . $name . '" id="' . $this->clazz . '_' . $name .'" value="' . $value . '" maxlength="' . $length . '" /><br/>';
+    }
+    
+    private function addSelect( $name, $selected, array $values ) {
+        $this->form .= '<select name="' . $name . '" id="' . $this->clazz . '_' . $name .'" >';
+        foreach ($values as $value) {
+            $selectedStr = ($selected == trim($value) ? 'selected="selected"':'');
+            $this->form .= '<option value="'.trim($value).'" '.$selectedStr.' >'.trim($value).'</option>';
+        }
+        $this->form .= '</select><br/>';
     }
 }

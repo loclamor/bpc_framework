@@ -15,7 +15,7 @@ class Entite {
 	 * mapping between class members and their type
 	 * Used by Form to automaticaly generate a HTML form element mapping members of the class
 	 * non listed members will not appears in HTML form, except the ID witch will be hidden if no specified
-	 * Type could be : varchar(length), text, date, integer, hidden
+	 * Type could be : varchar(length), enum(val1, val2, val3 [,...]), text, date, integer, hidden
 	 */
 	public $memberType = array(); // classMember => type
 	/**
