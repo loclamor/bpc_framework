@@ -17,7 +17,7 @@ class Entite {
 	 * non listed members will not appears in HTML form, except the ID witch will be hidden if no specified
 	 * Type could be : varchar(length), text, date, integer, hidden
 	 */
-	public $memberType = array() // classMember => type
+	public $memberType = array(); // classMember => type
 	/**
 	 * the entite ID
 	 */
@@ -51,7 +51,7 @@ class Entite {
 		foreach ($values as $key => $value){
 			$db_equiv = array_flip($this->DB_equiv); //on inverse les clees et le valeurs pour utiliser les valeurs en tant que clees
 			$var = $db_equiv[$key];
-			$this->$var = htmlentities(stripslashes($value));
+			$this->$var = (stripslashes($value));
 		}
 	}
 	
@@ -94,7 +94,7 @@ class Entite {
 						$toSet[] = ' '.$value.' = '.$this->$key;
 					}
 					else {
-							$toSet[] = ' '.$value.' = "'.addslashes(html_entity_decode(nl2br($this->$key))).'"';
+							$toSet[] = ' '.$value.' = "'.addslashes(htmlspecialchars(nl2br($this->$key))).'"';
 					}
 				}
 			}
@@ -115,7 +115,7 @@ class Entite {
 						$values[] = $this->$key;
 					}
 					else {
-						$values[] = '"'.addslashes(html_entity_decode(nl2br($this->$key))).'"';
+						$values[] = '"'.addslashes(htmlspecialchars(nl2br($this->$key))).'"';
 					}
 				}
 			}
@@ -123,6 +123,10 @@ class Entite {
 			$requete .= '('.implode(', ',$column).') VALUES('.implode(', ',$values).')';
 			$insertID = SQL::getInstance()->exec2($requete);
 			$this->id = $insertID;
+            //update the Entite with default values from database if any
+            if(array_key_exists('id', $this->DB_equiv)){
+				$this->loadFromDB($this->DB_equiv['id'],$this->id);
+			}
 			return $insertID;
 		}
 	}

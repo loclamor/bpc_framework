@@ -30,6 +30,7 @@ abstract class Controller {
 		}
 		
 		if( $this->isJSON ) {
+            header('Content-type: application/json; charset=utf-8');
 			echo $content;
 			die();
 		}

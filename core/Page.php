@@ -1,5 +1,7 @@
 <?php
-
+/**
+ * @deprecated use Controller instead
+ */
 abstract class Page {
 	private $content = array();
 	private $title = array();
@@ -11,9 +13,9 @@ abstract class Page {
 	public function __construct($mixed = null) {
 		//appel du controller de la classe fille
 		$this->controller($mixed);
-		//récupération du nom de la classe fille
+		//rï¿½cupï¿½ration du nom de la classe fille
 		$subClass = get_class($this);
-		//le but est ici d'ajouter le répertoire view avant le nom de la vue
+		//le but est ici d'ajouter le rï¿½pertoire view avant le nom de la vue
 		$pathArray = explode("_",$subClass);
 		$fileName = $pathArray[count($pathArray)-1];
 		$pathArray[count($pathArray)-1] = 'view';
@@ -25,7 +27,7 @@ abstract class Page {
 		}
 		
 		$path = 'class/'.implode('/',$newPathArray).'.phtml';
-		//enfin on importe, si le PHTML a été défini
+		//enfin on importe, si le PHTML a ï¿½tï¿½ dï¿½fini
 		if(file_exists($path)){
 			ob_start();
 			require $path;
@@ -34,7 +36,7 @@ abstract class Page {
 		}
 	}
 	
-	//obligé de mettre un param $mixed pour les pages appelées avec un ou des paramètres
+	//obligï¿½ de mettre un param $mixed pour les pages appelï¿½es avec un ou des paramï¿½tres
 	public abstract function controller($mixed) ;
 	
 	public function get($glue = "\n"){
@@ -46,7 +48,7 @@ abstract class Page {
 	 * Ajoute du contenu dans un element particulier
 	 * @param String $var l'element
 	 * @param String $content le contenu
-	 * @param boolean $end indique si on ajoute le contenu à la fin du contenu de l'element ou pas
+	 * @param boolean $end indique si on ajoute le contenu ï¿½ la fin du contenu de l'element ou pas
 	 */
 	public function addElement($var,$content,$end=true) {
 		if($end) {
@@ -59,9 +61,9 @@ abstract class Page {
 	
 	/**
 	 * Ajoute du contenu dans l'element contenu
-	 * Equivaut à addElement('content', $content,$end)
+	 * Equivaut ï¿½ addElement('content', $content,$end)
 	 * @param String $content le contenu
-	 * @param boolean $end indique si on ajoute le contenu à la fin de l'element contenu ou pas
+	 * @param boolean $end indique si on ajoute le contenu ï¿½ la fin de l'element contenu ou pas
 	 */
 	public function add($content,$end=true) {
 		$this->addElement('content', $content,$end);

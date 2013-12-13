@@ -98,7 +98,7 @@ class Site {
 		$controllerClass = "Controller_".firstchartoupper($this->controller);
 		$ObjController = new $controllerClass();
 		$ret = $ObjController->getAction( $this->action );
-		$this->addContent( $ret, 'root_container', 'div', array() );
+		$this->addContent( $ret, strtolower($this->controller) . "-" . strtolower($this->action), 'div', array("class" => "container") );
 		//chargement des plugins
 		if($dossier = opendir(PLUGINS_FOLDER)){
 			while(false !== ($fichier = readdir($dossier))){
@@ -336,7 +336,7 @@ class Site {
 			'.$contentToAdd.'
 			';
 		
-		if($myNode = DOMDocument::loadXml($contentToAdd)){
+		if($myNode = @DOMDocument::loadXml($contentToAdd)){
 			//c'est du HTML			
 			if($myNode instanceof DOMDocument){
 				$myNode = $myNode->documentElement;
