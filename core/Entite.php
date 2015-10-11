@@ -47,7 +47,7 @@ class Entite {
 	 */
 	public function loadFromDB($id_k,$id_v){
 		$requete = 'SELECT * FROM '.TABLE_PREFIX.$this->DB_table.' WHERE '.$id_k.' = '.$id_v;
-		$values = SQL::getInstance()->exec2($requete);
+		$values = SQL::getInstance()->exec($requete, true);
 		foreach ($values as $key => $value){
 			$db_equiv = array_flip($this->DB_equiv); //on inverse les clees et le valeurs pour utiliser les valeurs en tant que clees
 			$var = $db_equiv[$key];
@@ -100,7 +100,7 @@ class Entite {
 			}
 			$requete .= implode(',',$toSet);
 			$requete .= ' WHERE '.$this->DB_equiv['id'].' = '.$this->id;
-			SQL::getInstance()->exec2($requete);
+			SQL::getInstance()->exec($requete);
 			return true;
 		}
 		else {
@@ -121,7 +121,7 @@ class Entite {
 			}
 			//debug($column);debug($values);
 			$requete .= '('.implode(', ',$column).') VALUES('.implode(', ',$values).')';
-			$insertID = SQL::getInstance()->exec2($requete);
+			$insertID = SQL::getInstance()->exec($requete);
 			$this->id = $insertID;
             //update the Entite with default values from database if any
             if(array_key_exists('id', $this->DB_equiv)){
@@ -139,7 +139,7 @@ class Entite {
 	public function supprimer(){
 		$requete = 'DELETE FROM '.TABLE_PREFIX.$this->DB_table;
 		$requete .= ' WHERE '.$this->DB_equiv['id'].' = '.$this->id;
-		SQL::getInstance()->exec2($requete);
+		SQL::getInstance()->exec($requete);
 		return true;
 	}
 }

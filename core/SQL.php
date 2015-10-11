@@ -28,10 +28,10 @@ class SQL {
 	 * @param string $requete
 	 * @return array or false if no result
 	 */
-	public function exec($requete){
+	public function exec($requete, $oneRow = false){
 		$this->setLastQuery($requete);
 		$this->nb_query++;
-		//on fait la connexion � mysql
+		//on fait la connexion à mysql
 		mysql_connect(MYSQL_SERVER,  MYSQL_USER, MYSQL_PWD);
 		mysql_select_db(MYSQL_DB);
 		
@@ -49,36 +49,36 @@ class SQL {
 		$row = false;
 		if(strtoupper(substr($requete, 0, 6)) == 'SELECT') {
 			if(!is_null($rep) && !empty($rep)) {
-			/*	if(mysql_num_rows($rep) > 1) {
+				if( $oneRow ) {
+					$row = mysql_fetch_assoc($rep);
+				}
+				else {
 					while($res = mysql_fetch_assoc($rep)){
 						$row[] = $res;
 					}
-				}
-				else {
-					$row = mysql_fetch_assoc($rep);
-				}
-				*/
-				while($res = mysql_fetch_assoc($rep)){
-					$row[] = $res;
 				}
 			}
 		}
 		elseif(strtoupper(substr($requete, 0, 6)) == 'INSERT') {
 			$row = mysql_insert_id();
 		}
+		else {
+			$row = true;
+		}
 
-		//on se d�connecte
+		//on se déconnecte
 		mysql_close();
-		//on retourne le tableau de résultat
+		//on retourne le tableau de rÃ©sultat
 		return $row;
 	}
 	
-	//execution de requete SQL reserve � l'administration
+	/*
+	//execution de requete SQL reserve à l'administration
 	public function exec2($requete){
 		$this->setLastQuery($requete);
 		$this->nb_adm_query++;
 		
-		//on fait la connexion à mysql
+		//on fait la connexion Ã  mysql
 		mysql_connect(MYSQL_SERVER,  MYSQL_USER, MYSQL_PWD);
 		mysql_select_db(MYSQL_DB);
 		
@@ -111,11 +111,12 @@ class SQL {
 			$row = mysql_insert_id();
 		}
 
-		//on se déconnecte
+		//on se dÃ©connecte
 		mysql_close();
-		//on retourne le tableau de résultat
+		//on retourne le tableau de rÃ©sultat
 		return $row;
 	}
+	*/
 	
 	public function setLastError($err = ''){
 		$this->last_sql_error = $err;
