@@ -74,7 +74,7 @@ class SQL {
 	 * @return true/false depending success
 	 **/
 	public function createEmptyTable($tableName) {
-		$rep = $this->_exec("CREATE TABLE `$tableName` (`id` int(11) NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`) )");
+		$rep = $this->_exec("CREATE TABLE `$tableName` (`id` int(11) NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`), KEY `id` (`id`) )");
 		mysql_close();
 		if ( $rep === true ) {
 			$this->log->log('sql', 'info_sql', "create empty table `$tableName`", Logger::GRAN_MONTH);
