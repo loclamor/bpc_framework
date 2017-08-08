@@ -49,12 +49,12 @@ class Gestionnaire {
 	public function getAll($orderby = 'id', $desc = false) {
 		if(!is_null($orderby) && !empty($orderby)) {
 			$desc = $desc?' DESC':' ASC';
-			$orderby = ' ORDER BY ' . $orderby.$desc;
+			$orderby = ' ORDER BY `' . $orderby.'`'.$desc;
 		}
 		else {
 			$orderby = '';
 		}
-		$res = SQL::getInstance()->exec('SELECT '.$this->class->DB_equiv['id'].' FROM '.TABLE_PREFIX.$this->class->DB_table.$orderby);
+		$res = SQL::getInstance()->exec('SELECT '.$this->class->DB_equiv['id'].' FROM `'.TABLE_PREFIX.$this->class->DB_table.'`'.$orderby);
 		if($res) { //cas ou aucun retour requete (retour FALSE)
 			$all = array();
 			foreach ($res as $row) {
@@ -68,7 +68,7 @@ class Gestionnaire {
 	}
 	
 	public function countAll() {
-		$res = SQL::getInstance()->exec('SELECT COUNT(*) as nombre FROM '.TABLE_PREFIX.$this->class->DB_table);
+		$res = SQL::getInstance()->exec('SELECT COUNT(*) as nombre FROM `'.TABLE_PREFIX.$this->class->DB_table.'`');
 		if($res) { //cas ou aucun retour requete (retour FALSE)
 			$all = 0;
 			foreach ($res as $row) {
@@ -83,7 +83,7 @@ class Gestionnaire {
 	
 	/**
 	 * Retourne les enregistrements corespondant aux conditions
-	 * @param array $mixedConditions [var, value] or [var, [op, value]] (WHERE var = value AND ...)
+	 * @param array $mixedConditions [var: value] or [var: [op, value]] (WHERE var = value AND ...)
 	 * @param string $orderby [optional, default 'id'] (ORDER BY $orderby)
 	 * @param boolean $desc [optional, default false] si true DESC sinon ASC
 	 * @param integer $limitDown [optional, default 0] cf $limitUp
@@ -93,7 +93,7 @@ class Gestionnaire {
 	public function getOf(array $mixedConditions, $orderby = 'id', $desc = false, $limitDown = 0, $limitUp = 0) {
 		if(!is_null($orderby) && !empty($orderby)) {
 			$desc = $desc?'DESC':'ASC';
-			$orderby = ' ORDER BY ' . $orderby;
+			$orderby = ' ORDER BY `' . $orderby.'`';
 		}
 		else {
 			$orderby = '';
@@ -108,14 +108,62 @@ class Gestionnaire {
 		foreach ($mixedConditions as $var => $value){
             if( is_array( $value ) ) {
                 //forme [var, [op, value]]
-                $cond[] = $this->class->DB_equiv[$var].' '.$value[0].' \''.$value[1].'\'';
+                $cond[] = '`'.$this->class->DB_equiv[$var].'` '.$value[0].' \''.$value[1].'\'';
             }
             else {
                 //forme [var, value] === [var, ["=", value] ]
-                $cond[] = $this->class->DB_equiv[$var].' = \''.$value.'\'';
+                $cond[] = '`'.$this->class->DB_equiv[$var].'` = \''.$value.'\'';
             }
 		}
-		$res = SQL::getInstance()->exec('SELECT '.$this->class->DB_equiv['id'].' FROM '.TABLE_PREFIX.$this->class->DB_table.' WHERE '.implode(' AND ',$cond).$orderby.$limit);
+		$all = $this->getSQL( 'SELECT `'.$this->class->DB_equiv['id'].'` FROM `'.TABLE_PREFIX.$this->class->DB_table.'` WHERE '.implode(' AND ',$cond).$orderby.$limit );
+		return $all;
+	}
+	
+	/**
+	 * Retourne le premier enregistrement respectant les conditions
+	 * @param array $mixedConditions [var: value] or [var, [op, value]] (WHERE var = value AND ...)
+	 * @return Entite $this->class ou false si pas de r�sultat
+	 */
+	public function getOneOf(array $mixedConditions, $orderby = 'id', $desc = false){
+		$ret = $this->getOf($mixedConditions, 'id', false, 0, 1);
+		if($ret !== false){
+			return $ret[0];
+		}
+		return $ret;
+	}
+	/**
+	 * 
+	 * Enter description here ...
+	 * @param array $mixedConditions [var: value] or [var : [op, value]] (WHERE var = value AND ...)
+	 * @return integer
+	 */
+	public function countOf(array $mixedConditions) {
+		$cond = array();
+        foreach ($mixedConditions as $var => $value){
+            if( is_array( $value ) ) {
+                //forme [var, [op, value]]
+                $cond[] = '`'.$this->class->DB_equiv[$var].'` '.$value[0].' \''.$value[1].'\'';
+            }
+            else {
+                //forme [var, value] === [var, ["=", value] ]
+                $cond[] = '`'.$this->class->DB_equiv[$var].'` = \''.$value.'\'';
+            }
+		}
+		$res = SQL::getInstance()->exec('SELECT COUNT(*) as nombre FROM `'.TABLE_PREFIX.$this->class->DB_table.'` WHERE '.implode(' AND ',$cond));
+		if($res) { //cas ou aucun retour requete (retour FALSE)
+			$all = 0;
+			foreach ($res as $row) {
+				$all = $row['nombre'];
+			}
+		}
+		else {
+			$all = 0;
+		}
+		return $all;
+	}
+	
+	public function getSQL( $sqlStr ) {
+		$res = SQL::getInstance()->exec( $sqlStr );
 		if($res) { //cas ou aucun retour requete (retour FALSE)
 			$all = array();
 			foreach ($res as $row) {
@@ -128,37 +176,9 @@ class Gestionnaire {
 		return $all;
 	}
 	
-	/**
-	 * Retourne le premier enregistrement respectant les conditions
-	 * @param array $mixedConditions [var, value] or [var, [op, value]] (WHERE var = value AND ...)
-	 * @return Entite $this->class ou false si pas de r�sultat
-	 */
-	public function getOneOf(array $mixedConditions){
-		$ret = $this->getOf($mixedConditions, 'id', false, 0, 1);
-		if($ret !== false){
-			return $ret[0];
-		}
-		return $ret;
-	}
-	/**
-	 * 
-	 * Enter description here ...
-	 * @param array $mixedConditions [var, value] or [var, [op, value]] (WHERE var = value AND ...)
-	 * @return integer
-	 */
-	public function countOf(array $mixedConditions) {
-		$cond = array();
-        foreach ($mixedConditions as $var => $value){
-            if( is_array( $value ) ) {
-                //forme [var, [op, value]]
-                $cond[] = $this->class->DB_equiv[$var].' '.$value[0].' \''.$value[1].'\'';
-            }
-            else {
-                //forme [var, value] === [var, ["=", value] ]
-                $cond[] = $this->class->DB_equiv[$var].' = \''.$value.'\'';
-            }
-		}
-		$res = SQL::getInstance()->exec('SELECT COUNT(*) as nombre FROM '.TABLE_PREFIX.$this->class->DB_table.' WHERE '.implode(' AND ',$cond));
+	public function countSQL( $qlStr ) {
+		$slqCount = 'SELECT COUNT(*) as nombre FROM ('.$qlStr.') selectcount';
+		$res = SQL::getInstance()->exec( $slqCount );
 		if($res) { //cas ou aucun retour requete (retour FALSE)
 			$all = 0;
 			foreach ($res as $row) {

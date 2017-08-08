@@ -1,5 +1,5 @@
 <?php
-class Entite {
+class Entite implements JsonSerializable {
 	/**
 	 * String
 	 * class corresponding table name in DataBase (without TABLE_PREFIX)
@@ -10,6 +10,16 @@ class Entite {
 	 * mapping between class members and DB attributes
 	 */
 	public $DB_equiv = array(); // classMember => DBAttr
+	
+	/**
+	 * Array
+	 * mapping between DB attributes and SQL types (int(X), varchar(X), datetime...)
+	 * used to automatically generate DB model on the fly
+	 * Type can be appended by ' NOT NULL' and optionaly 'DEFAULT XXX' in SQL syntax.
+	 * NOT NULL option should have DEFAULT value if existing table already have rows.
+	 */
+	public $DB_type = array(); // DBAttr => DBtype
+	
 	/**
 	 * Array
 	 * mapping between class members and their type
@@ -18,6 +28,11 @@ class Entite {
 	 * Type could be : varchar(length), enum(val1, val2, val3 [,...]), text, date, integer, hidden
 	 */
 	public $memberType = array(); // classMember => type
+	
+	/**
+	 * Custom list of entity members to NOT serialize on json_encode
+	 */
+	public $donotSerialize = array();
 	/**
 	 * the entite ID
 	 */
@@ -28,6 +43,25 @@ class Entite {
 	 * @param ID $id optional, if defined, load the Entite identified by its ID from database
 	 */
 	public function __construct($id = null){
+		if(ENTITIES_AUTO_INSTALL === true) {
+			//TODO
+			$tableName = TABLE_PREFIX.$this->DB_table;
+			// check table exists ; create table elsewhere
+			if (!SQL::getInstance()->checkTableExists($tableName)) {
+				//create table
+				SQL::getInstance()->createEmptyTable($tableName);
+			}
+			// get table description
+			$struct = SQL::getInstance()->getTableDescription($tableName);
+			
+			// check existing fields ; create missing with correct type
+			foreach( $this->DB_type as $field => $type ) {
+				if( !array_key_exists($field, $struct) ) {
+					SQL::getInstance()->addFieldToTable($field, $type, $tableName);
+				}
+			}
+			
+		}
 		if(!is_null($id)){
 			if(array_key_exists('id', $this->DB_equiv)){
 				$this->loadFromDB($this->DB_equiv['id'],$id);
@@ -46,8 +80,12 @@ class Entite {
 	 * ATTENTION : $id_v must to be unique
 	 */
 	public function loadFromDB($id_k,$id_v){
-		$requete = 'SELECT * FROM '.TABLE_PREFIX.$this->DB_table.' WHERE '.$id_k.' = '.$id_v;
+		$requete = 'SELECT * FROM `'.TABLE_PREFIX.$this->DB_table.'` WHERE `'.$id_k.'` = '.$id_v;
 		$values = SQL::getInstance()->exec($requete, true);
+		if (!$values) {
+			 SQL::getInstance()->getLogger()->log('sql', 'erreurs_sql', "loadFromDB : 'SELECT * FROM `". TABLE_PREFIX.$this->DB_table.'` WHERE `'.$id_k.'` = '.$id_v."' : empty response !", Logger::GRAN_MONTH);
+			throw new \Exception($this->DB_table . ' : `' .$id_k.'` = `'.$id_v . "` n'existe pas !");
+		}
 		foreach ($values as $key => $value){
 			$db_equiv = array_flip($this->DB_equiv); //on inverse les clees et le valeurs pour utiliser les valeurs en tant que clees
 			$var = $db_equiv[$key];
@@ -86,26 +124,26 @@ class Entite {
 			if(is_null($toUpdate)) {
 				$toUpdate = array_flip($this->DB_equiv);
 			}
-			$requete = 'UPDATE '.TABLE_PREFIX.$this->DB_table.' SET';
+			$requete = 'UPDATE `'.TABLE_PREFIX.$this->DB_table.'` SET';
 			$toSet = array();
 			foreach ($this->DB_equiv as $key => $value) {
 				if($key != 'id' && !is_null($this->$key) && in_array($key,$toUpdate)) {
 					if(is_int($this->$key)) {
-						$toSet[] = ' '.$value.' = '.$this->$key;
+						$toSet[] = ' `'.$value.'` = '.$this->$key;
 					}
 					else {
-							$toSet[] = ' '.$value.' = "'.addslashes(htmlspecialchars(nl2br($this->$key))).'"';
+							$toSet[] = ' `'.$value.'` = "'.addslashes(htmlspecialchars(nl2br($this->$key))).'"';
 					}
 				}
 			}
 			$requete .= implode(',',$toSet);
-			$requete .= ' WHERE '.$this->DB_equiv['id'].' = '.$this->id;
+			$requete .= ' WHERE `'.$this->DB_equiv['id'].'` = '.$this->id;
 			SQL::getInstance()->exec($requete);
 			return true;
 		}
 		else {
 			//insert
-			$requete = 'INSERT INTO '.TABLE_PREFIX.$this->DB_table.' ';
+			$requete = 'INSERT INTO `'.TABLE_PREFIX.$this->DB_table.'` ';
 			$column = array();
 			$values = array();
 			foreach ($this->DB_equiv as $key => $value) {
@@ -137,9 +175,38 @@ class Entite {
 	 * @return true on success
 	 */
 	public function supprimer(){
-		$requete = 'DELETE FROM '.TABLE_PREFIX.$this->DB_table;
-		$requete .= ' WHERE '.$this->DB_equiv['id'].' = '.$this->id;
+		$requete = 'DELETE FROM `'.TABLE_PREFIX.$this->DB_table.'`';
+		$requete .= ' WHERE `'.$this->DB_equiv['id'].'` = '.$this->id;
 		SQL::getInstance()->exec($requete);
 		return true;
 	}
+	
+	/**
+     * As Entite implements JsonSerializable, jsonSerialize method is called on json_encode
+     * @return array to jsonify contening only public setted properties of the EntiteJson.
+     */
+    public function jsonSerialize() {
+        $json = array();
+        $keys = $this->getPublicProperties();
+        foreach ($keys as $key) {
+            //return only defined attributes 
+            if( !in_array($key, array_merge(array('DB_table', 'DB_equiv', 'memberType', 'donotSerialize'), $this->donotSerialize)) ) 
+            {
+                $value = $this->$key;
+                $json[$key] = $value;
+            }
+        }
+        return $json;
+    }
+    
+   /**
+    * Get only public properties of the class :
+    * @see http://stackoverflow.com/questions/13124072/how-to-programatically-find-public-properties-of-a-class-from-inside-one-of-its#answer-15847048
+    * @return array of public class properties
+    */
+    private function getPublicProperties() {
+        $publicVars = create_function('$obj', 'return get_object_vars($obj);');
+        $properties = $publicVars($this);
+        return array_keys($properties);
+    }
 }

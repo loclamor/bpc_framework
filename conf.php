@@ -19,6 +19,25 @@ if( !defined('DEFAULT_JSON') )
 if( !defined('DEFAULT_ALLOW_ALL_ORIGIN') )
     define('DEFAULT_ALLOW_ALL_ORIGIN', false);
 
+/*
+ * Define application environment. dev / prod
+ * if dev mod, application will log more data by default
+ */
+if( !defined('APPLICATION_ENV') )
+    define('APPLICATION_ENV', 'prod');
+    
+    
+/*
+ * Allow entities to install themselve from DB_type data
+ */
+if( !defined('ENTITIES_AUTO_INSTALL') )
+    define('ENTITIES_AUTO_INSTALL', false);
+    
+if( !defined('BPCF_ROOT') )
+    define('BPCF_ROOT', '.');
+    
+ob_start();
+
 require_once BPCF.'/functions.php';
 
 /*

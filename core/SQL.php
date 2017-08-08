@@ -29,22 +29,7 @@ class SQL {
 	 * @return array or false if no result
 	 */
 	public function exec($requete, $oneRow = false){
-		$this->setLastQuery($requete);
-		$this->nb_query++;
-		//on fait la connexion à mysql
-		mysql_connect(MYSQL_SERVER,  MYSQL_USER, MYSQL_PWD);
-		mysql_select_db(MYSQL_DB);
-		
-		$this->setLastError();
-		//on fait la requete
-		$rep = mysql_query($requete);
-		//debug($rep);
-		$this->setLastError(mysql_error());
-		if($this->last_sql_error != ''){
-			//echo $this->last_sql_error;
-			$this->nb_sql_errors++;
-			$this->log->log('sql', 'erreurs_sql', $this->getLastQuery() . ' : ' . $this->last_sql_error, Logger::GRAN_MONTH);
-		}
+		$rep = $this->_exec($requete);
 		
 		$row = false;
 		if(strtoupper(substr($requete, 0, 6)) == 'SELECT') {
@@ -70,6 +55,80 @@ class SQL {
 		mysql_close();
 		//on retourne le tableau de rÃ©sultat
 		return $row;
+	}
+	
+	/**
+	 * Check if table_name exists in database
+	 * @return true/false depending success
+	 **/
+	public function checkTableExists($tableName) {
+		$rep = $this->_exec("SHOW TABLES LIKE '$tableName'");
+		$row = mysql_fetch_assoc($rep);
+		mysql_close();
+		return $row !== false;
+	}
+	
+	/**
+	 * Create empty table_name in database.
+	 * Empty means only with id primary auto_increment field
+	 * @return true/false depending success
+	 **/
+	public function createEmptyTable($tableName) {
+		$rep = $this->_exec("CREATE TABLE `$tableName` (`id` int(11) NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`) )");
+		mysql_close();
+		if ( $rep === true ) {
+			$this->log->log('sql', 'info_sql', "create empty table `$tableName`", Logger::GRAN_MONTH);
+			return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * Get table description (mysql DESCRIBE)
+	 * @return associated array field => type
+	 **/
+	public function getTableDescription($tableName) {
+		$rep = $this->_exec("DESCRIBE `$tableName`");
+		$struct = array();
+		while($res = mysql_fetch_assoc($rep)){
+			$struct[$res['Field']] = $res['Type'];
+		}
+		mysql_close();
+		return $struct;
+	}
+	
+	/**
+	 * Add specified typed field to table
+	 * @return true/false depending success.
+	 **/
+	public function addFieldToTable($field, $type, $table) {
+		$rep = $this->_exec("ALTER TABLE `$table` ADD COLUMN `$field` $type");
+		mysql_close();
+		if ( $rep === true ) {
+			$this->log->log('sql', 'info_sql', "alter table `$table` add field `$field` '$type'", Logger::GRAN_MONTH);
+			return true;
+		}
+		return false;
+	}
+	
+	private function _exec($requete) {
+		$this->setLastQuery($requete);
+		$this->nb_query++;
+		//on fait la connexion à mysql
+		@mysql_connect(MYSQL_SERVER,  MYSQL_USER, MYSQL_PWD);
+		@mysql_select_db(MYSQL_DB);
+		
+		$this->setLastError();
+		//on fait la requete
+		$rep = mysql_query($requete);
+		//debug($rep);
+		$this->setLastError(mysql_error());
+		if($this->last_sql_error != ''){
+			//echo $this->last_sql_error;
+			$this->nb_sql_errors++;
+			$this->log->log('sql', 'erreurs_sql', $this->getLastQuery() . ' : ' . $this->last_sql_error, Logger::GRAN_MONTH);
+		}
+		return $rep;
 	}
 	
 	/*
@@ -144,5 +203,9 @@ class SQL {
 	
 	public function getNbErrors() {
 		return $this->nb_sql_errors;
+	}
+	
+	public function getLogger() {
+		return $this->log;
 	}
 }

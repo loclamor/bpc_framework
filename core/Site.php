@@ -2,9 +2,9 @@
 
 class Site {
 	
-	private static $instance = null;
+	private static $instances = array();
 	
-	private $title = array();
+	private $title = array(SITE_NAME);
 	private $filariane = array();
 	
 	/**
@@ -56,17 +56,22 @@ class Site {
 		return $this->action;
 	}
 	
-	public static function getInstance( $controller = null, $action = null ) {
-		if(is_null(self::$instance)) {
-		self::$instance = new Site( $controller, $action );
-		}
-		return self::$instance;
+	final public static function getInstance( $controller = null, $action = null ) {
+		
+		$calledClass = get_called_class();
+
+        if (!isset($instances[$calledClass]))
+        {
+            $instances[$calledClass] = new $calledClass($controller, $action);
+        }
+
+        return $instances[$calledClass];
 	}
 	
 	/**
 	 * Constructeur, gère l'appel des controllers, etc
 	 */
-	private function __construct( $controller = null, $action = null )
+	protected function __construct( $controller = null, $action = null )
 	{
 		
 		if( !is_null( $controller ) ) {
@@ -83,24 +88,24 @@ class Site {
 		}
 		else if( isset ( $_GET['controller'] ) and !empty ( $_GET['controller'] ) ) {
 			$this->controller = $_GET['controller'];
-			if( isset ( $_GET['action'] ) and !empty ( $_GET['action'] ) ) {
-				$this->action = $_GET['action'];
-			}
-			else {
-				$this->action = DEFAULT_ACTION;
-			}
 		}
 		else {
 			$this->controller = DEFAULT_CONTROLLER;
+		}
+		if( isset ( $_GET['action'] ) and !empty ( $_GET['action'] ) ) {
+			$this->action = $_GET['action'];
+		}
+		else {
 			$this->action = DEFAULT_ACTION;
 		}
 		
-		$controllerClass = "Controller_".firstchartoupper($this->controller);
-		$ObjController = new $controllerClass();
+		$ObjController = $this->getControllerFromName($this->controller);
+
 		$ret = $ObjController->getAction( $this->action );
-		$this->addContent( $ret, strtolower($this->controller) . "-" . strtolower($this->action), 'div', array("class" => "container") );
+		$this->addFoot( $ObjController->getScripts() );
+		$this->addContent( $ret, strtolower($this->controller) . "-" . strtolower($this->action), 'div', array("class" => "bpcf_container") );
 		//chargement des plugins
-		if($dossier = opendir(PLUGINS_FOLDER)){
+		if(file_exists(PLUGINS_FOLDER) && is_dir(PLUGINS_FOLDER) && $dossier = opendir(PLUGINS_FOLDER)){
 			while(false !== ($fichier = readdir($dossier))){
 				if($fichier != '.' && $fichier != '..'){
 					if($ss_dossier = opendir(PLUGINS_FOLDER . '/'.$fichier)){
@@ -128,6 +133,11 @@ class Site {
 			}
 		}
 
+	}
+	
+	protected function getControllerFromName( $controllerName ) {
+		$controllerClass = "Controller_".firstchartoupper($controllerName);
+		return new $controllerClass();
 	}
 	
 	//public abstract function construct();
