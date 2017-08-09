@@ -54,16 +54,7 @@ class Gestionnaire {
 		else {
 			$orderby = '';
 		}
-		$res = SQL::getInstance()->exec('SELECT '.$this->class->DB_equiv['id'].' FROM `'.TABLE_PREFIX.$this->class->DB_table.'`'.$orderby);
-		if($res) { //cas ou aucun retour requete (retour FALSE)
-			$all = array();
-			foreach ($res as $row) {
-				$all[] = $this->getOne($row[$this->class->DB_equiv['id']]);
-			}
-		}
-		else {
-			$all = false;
-		}
+		$all = $this->getSQL('SELECT '.$this->class->DB_equiv['id'].' FROM `'.TABLE_PREFIX.$this->class->DB_table.'`'.$orderby);
 		return $all;
 	}
 	
@@ -108,11 +99,11 @@ class Gestionnaire {
 		foreach ($mixedConditions as $var => $value){
             if( is_array( $value ) ) {
                 //forme [var, [op, value]]
-                $cond[] = '`'.$this->class->DB_equiv[$var].'` '.$value[0].' \''.$value[1].'\'';
+                $cond[] = '`'.$this->class->DB_equiv[$var].'` '.$value[0].($value[1] !== null? ' \''.$value[1].'\'' : ' NULL');
             }
             else {
                 //forme [var, value] === [var, ["=", value] ]
-                $cond[] = '`'.$this->class->DB_equiv[$var].'` = \''.$value.'\'';
+                $cond[] = '`'.$this->class->DB_equiv[$var].'` = '.($value!==null?'\''.$value.'\'':' NULL');
             }
 		}
 		$all = $this->getSQL( 'SELECT `'.$this->class->DB_equiv['id'].'` FROM `'.TABLE_PREFIX.$this->class->DB_table.'` WHERE '.implode(' AND ',$cond).$orderby.$limit );
@@ -142,11 +133,11 @@ class Gestionnaire {
         foreach ($mixedConditions as $var => $value){
             if( is_array( $value ) ) {
                 //forme [var, [op, value]]
-                $cond[] = '`'.$this->class->DB_equiv[$var].'` '.$value[0].' \''.$value[1].'\'';
+                $cond[] = '`'.$this->class->DB_equiv[$var].'` '.$value[0].($value[1] !== null? ' \''.$value[1].'\'' : ' NULL')
             }
             else {
                 //forme [var, value] === [var, ["=", value] ]
-                $cond[] = '`'.$this->class->DB_equiv[$var].'` = \''.$value.'\'';
+                $cond[] = '`'.$this->class->DB_equiv[$var].'` = '.($value!==null?'\''.$value.'\'':' NULL');
             }
 		}
 		$res = SQL::getInstance()->exec('SELECT COUNT(*) as nombre FROM `'.TABLE_PREFIX.$this->class->DB_table.'` WHERE '.implode(' AND ',$cond));
