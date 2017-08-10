@@ -60,8 +60,10 @@ function import($path=""){
 }
 
 function redirect($url) {
-	if($url !== false)
+	if($url !== false) {
 		header('Location: '.$url);
+		die(); //force stop page generation and direct redirect.	
+	}
 }
 
 //remplace le bbcode par le code html correspondant
