@@ -57,15 +57,12 @@ class Site {
 	}
 	
 	final public static function getInstance( $controller = null, $action = null ) {
-		
 		$calledClass = get_called_class();
-
-        if (!isset($instances[$calledClass]))
+        if (!isset(self::$instances[$calledClass]))
         {
-            $instances[$calledClass] = new $calledClass($controller, $action);
+            self::$instances[$calledClass] = new $calledClass($controller, $action);
         }
-
-        return $instances[$calledClass];
+        return self::$instances[$calledClass];
 	}
 	
 	/**
@@ -73,7 +70,6 @@ class Site {
 	 */
 	protected function __construct( $controller = null, $action = null )
 	{
-		
 		if( !is_null( $controller ) ) {
 			$this->controller = $controller;
 			if( !is_null( $action ) ) {
@@ -137,10 +133,26 @@ class Site {
 	
 	protected function getControllerFromName( $controllerName ) {
 		$controllerClass = "Controller_".firstchartoupper($controllerName);
-		return new $controllerClass();
+		$controllerObj = new $controllerClass();
+		$controllerObj->setSite($this);
+		return $controllerObj;
 	}
 	
-	//public abstract function construct();
+	/**
+	 * The aim of this function is to define a current connected user ; from  SESSION eventually
+	 * @return false if no current user, or the user object if there is one.
+	 **/
+	protected function loadCurrentUser() {
+		return false;
+	}
+	
+	/**
+	 * The aim of this function is to get the current connected user.
+	 * @return false if no current user, or the user object if there is one.
+	 **/
+	public function getCurrentUser() {
+		return false;
+	}
 	
 	/**
 	 * retourne le contenu de l'element title pour affichage

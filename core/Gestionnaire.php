@@ -133,7 +133,7 @@ class Gestionnaire {
         foreach ($mixedConditions as $var => $value){
             if( is_array( $value ) ) {
                 //forme [var, [op, value]]
-                $cond[] = '`'.$this->class->DB_equiv[$var].'` '.$value[0].($value[1] !== null? ' \''.$value[1].'\'' : ' NULL')
+                $cond[] = '`'.$this->class->DB_equiv[$var].'` '.$value[0].($value[1] !== null? ' \''.$value[1].'\'' : ' NULL');
             }
             else {
                 //forme [var, value] === [var, ["=", value] ]

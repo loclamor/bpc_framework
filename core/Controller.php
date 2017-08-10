@@ -21,6 +21,8 @@ abstract class Controller {
 	public $className = "default_controller";
 	public $controllerName = "default";
 	
+	private $site;
+	
 	public $scripts = array();
 	
 	public function __construct(){
@@ -76,6 +78,14 @@ abstract class Controller {
 	public function addScript( $s ) { 
 		$this->scripts[] = $s;
 	}
+	
+	public function setSite(Site $site) {
+		$this->site = $site;
+	}
+	public function getSite() {
+		return $this->site;
+	}
+	
 }
 
 ?>

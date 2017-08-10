@@ -190,7 +190,7 @@ class Entite implements JsonSerializable {
         $keys = $this->getPublicProperties();
         foreach ($keys as $key) {
             //return only defined attributes 
-            if( !in_array($key, array_merge(array('DB_table', 'DB_equiv', 'memberType', 'donotSerialize'), $this->donotSerialize)) ) 
+            if( !in_array($key, array_merge(array('DB_table', 'DB_equiv', 'DB_type', 'memberType', 'donotSerialize'), $this->donotSerialize)) ) 
             {
                 $value = $this->$key;
                 $json[$key] = $value;
