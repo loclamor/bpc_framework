@@ -95,6 +95,9 @@ class Site {
 			$this->action = DEFAULT_ACTION;
 		}
 		
+		// load current user before actions call
+		$this->loadCurrentUser();
+		
 		$ObjController = $this->getControllerFromName($this->controller);
 
 		$ret = $ObjController->getAction( $this->action );
