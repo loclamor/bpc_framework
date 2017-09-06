@@ -32,6 +32,22 @@ class Gestionnaire {
 	}
 	
 	/**
+	 * Clean and format an SQL orderby clause :
+	 * 'p1 order , p2 order' become '`p1` order, `p2` order'
+	 * @param String $orderby dirty orderby clause
+	 * @return String the cleaned orderby clause
+	 **/
+	private function cleanOrderBy($orderby) {
+		$cleaned = [];
+		$parts = explode(',', $orderby);
+		foreach($parts as $part) {
+			$p_part = explode(' ', trim($part));
+			$cleaned[] = '`'.trim($p_part[0]).'`'.(count($p_part)>1?' '.trim($p_part[1]):'');
+		}
+		return implode(', ', $cleaned);
+	}
+	
+	/**
 	 * @param integer $id
 	 * @return Entite
 	 */
@@ -49,7 +65,7 @@ class Gestionnaire {
 	public function getAll($orderby = 'id', $desc = false) {
 		if(!is_null($orderby) && !empty($orderby)) {
 			$desc = $desc?' DESC':' ASC';
-			$orderby = ' ORDER BY `' . $orderby.'`'.$desc;
+			$orderby = ' ORDER BY ' . $this->cleanOrderBy($orderby.$desc);
 		}
 		else {
 			$orderby = '';
@@ -83,8 +99,8 @@ class Gestionnaire {
 	 */
 	public function getOf(array $mixedConditions, $orderby = 'id', $desc = false, $limitDown = 0, $limitUp = 0) {
 		if(!is_null($orderby) && !empty($orderby)) {
-			$desc = $desc?'DESC':'ASC';
-			$orderby = ' ORDER BY `' . $orderby.'`';
+			$desc = $desc?' DESC':' ASC';
+			$orderby = ' ORDER BY ' . $this->cleanOrderBy($orderby.$desc);
 		}
 		else {
 			$orderby = '';
@@ -116,7 +132,7 @@ class Gestionnaire {
 	 * @return Entite $this->class ou false si pas de r�sultat
 	 */
 	public function getOneOf(array $mixedConditions, $orderby = 'id', $desc = false){
-		$ret = $this->getOf($mixedConditions, 'id', false, 0, 1);
+		$ret = $this->getOf($mixedConditions, $orderby, $desc, 0, 1);
 		if($ret !== false){
 			return $ret[0];
 		}
