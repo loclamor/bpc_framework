@@ -70,73 +70,90 @@ class Site {
 	 */
 	protected function __construct( $controller = null, $action = null )
 	{
-		if( !is_null( $controller ) ) {
-			$this->controller = $controller;
-			if( !is_null( $action ) ) {
-				$this->action = $action;
+		try {
+			if( !is_null( $controller ) ) {
+				$this->controller = $controller;
+				if( !is_null( $action ) ) {
+					$this->action = $action;
+				}
+				else if( isset ( $_GET['action'] ) and !empty ( $_GET['action'] ) ) {
+					$this->action = $_GET['action'];
+				}
+				else {
+					$this->action = DEFAULT_ACTION;
+				}
 			}
-			else if( isset ( $_GET['action'] ) and !empty ( $_GET['action'] ) ) {
+			else if( isset ( $_GET['controller'] ) and !empty ( $_GET['controller'] ) ) {
+				$this->controller = $_GET['controller'];
+			}
+			else {
+				$this->controller = DEFAULT_CONTROLLER;
+			}
+			if( isset ( $_GET['action'] ) and !empty ( $_GET['action'] ) ) {
 				$this->action = $_GET['action'];
 			}
 			else {
 				$this->action = DEFAULT_ACTION;
 			}
-		}
-		else if( isset ( $_GET['controller'] ) and !empty ( $_GET['controller'] ) ) {
-			$this->controller = $_GET['controller'];
-		}
-		else {
-			$this->controller = DEFAULT_CONTROLLER;
-		}
-		if( isset ( $_GET['action'] ) and !empty ( $_GET['action'] ) ) {
-			$this->action = $_GET['action'];
-		}
-		else {
-			$this->action = DEFAULT_ACTION;
-		}
-		
-		// load current user before actions call
-		$this->loadCurrentUser();
-		
-		$ObjController = $this->getControllerFromName($this->controller);
-
-		$ret = $ObjController->getAction( $this->action );
-		$this->addFoot( $ObjController->getScripts() );
-		$this->addContent( $ret, strtolower($this->controller) . "-" . strtolower($this->action), 'div', array("class" => "bpcf_container") );
-		//chargement des plugins
-		if(file_exists(PLUGINS_FOLDER) && is_dir(PLUGINS_FOLDER) && $dossier = opendir(PLUGINS_FOLDER)){
-			while(false !== ($fichier = readdir($dossier))){
-				if($fichier != '.' && $fichier != '..'){
-					if($ss_dossier = opendir(PLUGINS_FOLDER . '/'.$fichier)){
-						$rep = $fichier;
-						//c'est un r�pertoire de site
-						while(false !== ($fichier = readdir($ss_dossier))){
-							if($fichier != '.' && $fichier != '..' && is_file(PLUGINS_FOLDER . '/' . $rep . '/' .$fichier)){
-								$class = getClassNameFromPath(PLUGINS_FOLDER . '/' . $rep . '/' .$fichier);
+			
+			// load current user before actions call
+			$this->loadCurrentUser();
+			
+			$ObjController = $this->getControllerFromName($this->controller);
+			try {
+				$ret = $ObjController->getAction( $this->action );
+			}
+			catch( Exception $e ) {
+				throw new Exception($e->getMessage());
+			}
+			$this->addFoot( $ObjController->getScripts() );
+			$this->addContent( $ret, strtolower($this->controller) . "-" . strtolower($this->action), 'div', array("class" => "bpcf_container") );
+			//chargement des plugins
+			if(file_exists(PLUGINS_FOLDER) && is_dir(PLUGINS_FOLDER) && $dossier = opendir(PLUGINS_FOLDER)){
+				while(false !== ($fichier = readdir($dossier))){
+					if($fichier != '.' && $fichier != '..'){
+						if($ss_dossier = opendir(PLUGINS_FOLDER . '/'.$fichier)){
+							$rep = $fichier;
+							//c'est un r�pertoire de site
+							while(false !== ($fichier = readdir($ss_dossier))){
+								if($fichier != '.' && $fichier != '..' && is_file(PLUGINS_FOLDER . '/' . $rep . '/' .$fichier)){
+									$class = getClassNameFromPath(PLUGINS_FOLDER . '/' . $rep . '/' .$fichier);
+									$class = new $class;
+									$class->setDomContent($this->DOMContent);
+									$class->exec();
+								}
+							}
+						}
+						else {
+							if(is_file(PLUGINS_FOLDER . '/' . $fichier)){
+								//c'est un fichier
+								$class = getClassNameFromPath(PLUGINS_FOLDER . '/' .$fichier);
 								$class = new $class;
 								$class->setDomContent($this->DOMContent);
 								$class->exec();
 							}
 						}
 					}
-					else {
-						if(is_file(PLUGINS_FOLDER . '/' . $fichier)){
-							//c'est un fichier
-							$class = getClassNameFromPath(PLUGINS_FOLDER . '/' .$fichier);
-							$class = new $class;
-							$class->setDomContent($this->DOMContent);
-							$class->exec();
-						}
-					}
 				}
 			}
+		}
+		catch (Exception $e) {
+			throw new Exception("Une erreur est survenue : " . $e->getMessage());
 		}
 
 	}
 	
 	protected function getControllerFromName( $controllerName ) {
 		$controllerClass = "Controller_".firstchartoupper($controllerName);
-		$controllerObj = new $controllerClass();
+		try {
+			if(!class_exists($controllerClass)) {
+				throw new Exception();
+			}
+			$controllerObj = new $controllerClass();
+		}
+		catch( Exception $e ) {
+			throw new Exception("Le controller '$controllerName' n'existe pas !");
+		}
 		$controllerObj->setSite($this);
 		return $controllerObj;
 	}

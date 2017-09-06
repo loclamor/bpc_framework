@@ -41,12 +41,22 @@ abstract class Controller {
 		$subClass = get_class($this);
 		$this->className = $subClass;
 
-		$this->$action();
-		
-		
 		$simpleName = firstchartolower( str_replace( "Controller_", "", $subClass ) );
 		$this->controllerName = $simpleName;
 		$pathView = BPCF_ROOT."/view/".$simpleName."/".$action.".phtml";
+
+		try {
+			if(!method_exists($subClass, $action)) {
+				throw new Exception();
+			}
+			$this->$action();
+		}
+		catch (Exception $e) {
+			throw new Exception("l'action '$action' du controller '$simpleName' n'existe pas !");
+		}
+		
+		
+		
 		
 		$content = "";
 		if( file_exists( $pathView ) ){
