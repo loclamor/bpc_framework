@@ -43,6 +43,7 @@ class Entite implements JsonSerializable {
 	 * @param ID $id optional, if defined, load the Entite identified by its ID from database
 	 */
 	public function __construct($id = null){
+		$dbequiv = $this->getDBEquiv();
 		if(ENTITIES_AUTO_INSTALL === true) {
 			//TODO
 			$tableName = TABLE_PREFIX.$this->DB_table;
@@ -63,8 +64,8 @@ class Entite implements JsonSerializable {
 			
 		}
 		if(!is_null($id)){
-			if(array_key_exists('id', $this->DB_equiv)){
-				$this->loadFromDB($this->DB_equiv['id'],$id);
+			if(array_key_exists('id', $dbequiv)){
+				$this->loadFromDB($dbequiv['id'],$id);
 			}
 			else {
 				//gestion erreur
@@ -80,6 +81,7 @@ class Entite implements JsonSerializable {
 	 * ATTENTION : $id_v must to be unique
 	 */
 	public function loadFromDB($id_k,$id_v){
+		$dbequiv = $this->getDBEquiv();
 		$requete = 'SELECT * FROM `'.TABLE_PREFIX.$this->DB_table.'` WHERE `'.$id_k.'` = '.$id_v;
 		$values = SQL::getInstance()->exec($requete, true);
 		if (!$values) {
@@ -87,7 +89,7 @@ class Entite implements JsonSerializable {
 			throw new \Exception($this->DB_table . ' : `' .$id_k.'` = `'.$id_v . "` n'existe pas !");
 		}
 		foreach ($values as $key => $value){
-			$db_equiv = array_flip($this->DB_equiv); //on inverse les clees et le valeurs pour utiliser les valeurs en tant que clees
+			$db_equiv = array_flip($dbequiv); //on inverse les clees et le valeurs pour utiliser les valeurs en tant que clees
 			$var = $db_equiv[$key];
 			$this->$var = (stripslashes($value));
 		}
@@ -119,14 +121,15 @@ class Entite implements JsonSerializable {
 	 * @return true/falsein case of update, depending update success ; in case of first save (SQL Insert), return the new ID
 	 */
 	public function enregistrer($toUpdate = null) {
+		$dbequiv = $this->getDBEquiv();
 		if(!is_null($this->id)) {
 			//update
 			if(is_null($toUpdate)) {
-				$toUpdate = array_flip($this->DB_equiv);
+				$toUpdate = array_flip($dbequiv);
 			}
 			$requete = 'UPDATE `'.TABLE_PREFIX.$this->DB_table.'` SET';
 			$toSet = array();
-			foreach ($this->DB_equiv as $key => $value) {
+			foreach ($dbequiv as $key => $value) {
 				if($key != 'id' && !is_null($this->$key) && in_array($key,$toUpdate)) {
 					if(is_int($this->$key)) {
 						$toSet[] = ' `'.$value.'` = '.$this->$key;
@@ -137,7 +140,7 @@ class Entite implements JsonSerializable {
 				}
 			}
 			$requete .= implode(',',$toSet);
-			$requete .= ' WHERE `'.$this->DB_equiv['id'].'` = '.$this->id;
+			$requete .= ' WHERE `'.$dbequiv['id'].'` = '.$this->id;
 			SQL::getInstance()->exec($requete);
 			return true;
 		}
@@ -146,7 +149,7 @@ class Entite implements JsonSerializable {
 			$requete = 'INSERT INTO `'.TABLE_PREFIX.$this->DB_table.'` ';
 			$column = array();
 			$values = array();
-			foreach ($this->DB_equiv as $key => $value) {
+			foreach ($dbequiv as $key => $value) {
 				if($key != 'id' && !is_null($this->$key)) {
 					$column[] = $value;
 					if(is_int($this->$key)) {
@@ -162,8 +165,8 @@ class Entite implements JsonSerializable {
 			$insertID = SQL::getInstance()->exec($requete);
 			$this->id = $insertID;
             //update the Entite with default values from database if any
-            if(array_key_exists('id', $this->DB_equiv)){
-				$this->loadFromDB($this->DB_equiv['id'],$this->id);
+            if(array_key_exists('id', $dbequiv)){
+				$this->loadFromDB($dbequiv['id'],$this->id);
 			}
 			return $insertID;
 		}
@@ -175,8 +178,9 @@ class Entite implements JsonSerializable {
 	 * @return true on success
 	 */
 	public function supprimer(){
+		$dbequiv = $this->getDBEquiv();
 		$requete = 'DELETE FROM `'.TABLE_PREFIX.$this->DB_table.'`';
-		$requete .= ' WHERE `'.$this->DB_equiv['id'].'` = '.$this->id;
+		$requete .= ' WHERE `'.$dbequiv['id'].'` = '.$this->id;
 		SQL::getInstance()->exec($requete);
 		return true;
 	}
@@ -208,5 +212,22 @@ class Entite implements JsonSerializable {
         $publicVars = create_function('$obj', 'return get_object_vars($obj);');
         $properties = $publicVars($this);
         return array_keys($properties);
+    }
+    
+    /**
+     * @return array the real DB_equiv completed with public properties not in DB_equiv definition
+     **/
+    private function getDBEquiv() {
+    	$realEquiv = array();
+    	$locals = $this->getPublicProperties();
+    	foreach($$locals as $local) {
+    		if(array_key_exists($this->DB_equiv, $local)) {
+    			$realEquiv[$local] = $this->DB_equiv[$local];
+    		}
+    		else {
+    			$realEquiv[$local] = $local;
+    		}
+    	}
+    	return $realEquiv;
     }
 }

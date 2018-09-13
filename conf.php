@@ -26,6 +26,13 @@ if( !defined('DEFAULT_ALLOW_ALL_ORIGIN') )
 if( !defined('APPLICATION_ENV') )
     define('APPLICATION_ENV', 'prod');
     
+/*
+ * Define application log level
+ * every log levels strictly highter than LOG_LEVEL will be ignored
+ */
+if( !defined('LOG_LEVEL') )
+    define('LOG_LEVEL', 3);
+    
     
 /*
  * Allow entities to install themselve from DB_type data

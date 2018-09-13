@@ -29,7 +29,10 @@ abstract class Controller {
 		$this->log = new Logger('./logs', "");
 	}
 	
-	public function log($msg) {
+	public function log($msg, $logLevel = LOG_LEVEL) {
+		if( $logLevel > LOG_LEVEL ) {
+			return;
+		}
 		$this->log->setBaseString($this->actionName . " : ");
 		$this->log->log('controllers', $this->className, $this->loggerBaseString . " " . $msg, Logger::GRAN_MONTH);
 	}
