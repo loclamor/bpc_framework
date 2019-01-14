@@ -33,19 +33,27 @@ class Entite implements JsonSerializable {
 	 * Custom list of entity members to NOT serialize on json_encode
 	 */
 	public $donotSerialize = array();
+	
+	/**
+	 * Custom list of entity members to NOT sync over Database
+	 */
+	public $donotSyncDatabase = array();
 	/**
 	 * the entite ID
 	 */
 	public $id;
+	
+	private $log;
 	
 	/**
 	 * Create a new Entite
 	 * @param ID $id optional, if defined, load the Entite identified by its ID from database
 	 */
 	public function __construct($id = null){
+		$this->log = new Logger('./logs', "");
 		$dbequiv = $this->getDBEquiv();
 		if(ENTITIES_AUTO_INSTALL === true) {
-			//TODO
+			SQL::getInstance()->manualConnection();
 			$tableName = TABLE_PREFIX.$this->DB_table;
 			// check table exists ; create table elsewhere
 			if (!SQL::getInstance()->checkTableExists($tableName)) {
@@ -61,7 +69,7 @@ class Entite implements JsonSerializable {
 					SQL::getInstance()->addFieldToTable($field, $type, $tableName);
 				}
 			}
-			
+			SQL::getInstance()->manualClose();
 		}
 		if(!is_null($id)){
 			if(array_key_exists('id', $dbequiv)){
@@ -72,6 +80,14 @@ class Entite implements JsonSerializable {
 				echo 'pas de champ id';
 			}
 		}
+	}
+	
+	public function log($msg, $logLevel = LOG_LEVEL) {
+		if( $logLevel > LOG_LEVEL ) {
+			return;
+		}
+		$this->log->setBaseString(get_class($this) . " : ");
+		$this->log->log('sql', 'entite', $msg, Logger::GRAN_MONTH);
 	}
 	
 	/**
@@ -194,13 +210,21 @@ class Entite implements JsonSerializable {
         $keys = $this->getPublicProperties();
         foreach ($keys as $key) {
             //return only defined attributes 
-            if( !in_array($key, array_merge(array('DB_table', 'DB_equiv', 'DB_type', 'memberType', 'donotSerialize'), $this->donotSerialize)) ) 
+            if( !in_array($key, $this->getDoNotSerialize()) ) 
             {
                 $value = $this->$key;
                 $json[$key] = $value;
             }
         }
         return $json;
+    }
+    
+    private function getDoNotSerialize() {
+    	return array_merge(array('DB_table', 'DB_equiv', 'DB_type', 'memberType', 'donotSyncDatabase', 'donotSerialize'), $this->donotSerialize);
+    }
+    
+    private function getDoNotSyncDatabase() {
+    	return array_merge(array('DB_table', 'DB_equiv', 'DB_type', 'memberType', 'donotSerialize', 'donotSyncDatabase'), $this->donotSyncDatabase);
     }
     
    /**
@@ -217,17 +241,23 @@ class Entite implements JsonSerializable {
     /**
      * @return array the real DB_equiv completed with public properties not in DB_equiv definition
      **/
-    private function getDBEquiv() {
+    public function getDBEquiv() {
     	$realEquiv = array();
     	$locals = $this->getPublicProperties();
-    	foreach($$locals as $local) {
-    		if(array_key_exists($this->DB_equiv, $local)) {
-    			$realEquiv[$local] = $this->DB_equiv[$local];
-    		}
-    		else {
-    			$realEquiv[$local] = $local;
+    	foreach($locals as $local) {
+    		if(!in_array($local, $this->getDoNotSyncDatabase()) ) {
+	    		if(array_key_exists($local, $this->DB_equiv)) {
+	    			$realEquiv[$local] = $this->DB_equiv[$local];
+	    		}
+	    		else {
+	    			$realEquiv[$local] = $local;
+	    		}
     		}
     	}
     	return $realEquiv;
+    }
+    
+    public function __toString() {
+    	return json_encode($this);
     }
 }

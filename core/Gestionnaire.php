@@ -63,6 +63,7 @@ class Gestionnaire {
 	}
 	
 	public function getAll($orderby = 'id', $desc = false) {
+		$dbequiv = $this->class->getDBEquiv();
 		if(!is_null($orderby) && !empty($orderby)) {
 			$desc = $desc?' DESC':' ASC';
 			$orderby = ' ORDER BY ' . $this->cleanOrderBy($orderby.$desc);
@@ -70,7 +71,7 @@ class Gestionnaire {
 		else {
 			$orderby = '';
 		}
-		$all = $this->getSQL('SELECT '.$this->class->DB_equiv['id'].' FROM `'.TABLE_PREFIX.$this->class->DB_table.'`'.$orderby);
+		$all = $this->getSQL('SELECT '.$dbequiv['id'].' FROM `'.TABLE_PREFIX.$this->class->DB_table.'`'.$orderby);
 		return $all;
 	}
 	
@@ -98,6 +99,7 @@ class Gestionnaire {
 	 * @return Array<Entite> ($this->class) ou false si pas de resultat
 	 */
 	public function getOf(array $mixedConditions, $orderby = 'id', $desc = false, $limitDown = 0, $limitUp = 0) {
+		$dbequiv = $this->class->getDBEquiv();
 		if(!is_null($orderby) && !empty($orderby)) {
 			$desc = $desc?' DESC':' ASC';
 			$orderby = ' ORDER BY ' . $this->cleanOrderBy($orderby.$desc);
@@ -112,17 +114,22 @@ class Gestionnaire {
 			$limit = '';
 		}
 		$cond = array();
+		$params = array();
 		foreach ($mixedConditions as $var => $value){
+			$pk = 'p_'.(count($params)+1);
+			$val = $value;
             if( is_array( $value ) ) {
                 //forme [var, [op, value]]
-                $cond[] = '`'.$this->class->DB_equiv[$var].'` '.$value[0].($value[1] !== null? ' \''.$value[1].'\'' : ' NULL');
+                $cond[] = '`'.$dbequiv[$var].'` '.$value[0].($value[1] !== null? ' \'{{'.$pk.'}}\'' : ' NULL');
+                $val = $value[1];
             }
             else {
                 //forme [var, value] === [var, ["=", value] ]
-                $cond[] = '`'.$this->class->DB_equiv[$var].'` = '.($value!==null?'\''.$value.'\'':' NULL');
+                $cond[] = '`'.$dbequiv[$var].'` = '.($value!==null?'\'{{'.$pk.'}}\'':' NULL');
             }
+            $params[$pk] = $val;
 		}
-		$all = $this->getSQL( 'SELECT `'.$this->class->DB_equiv['id'].'` FROM `'.TABLE_PREFIX.$this->class->DB_table.'` WHERE '.implode(' AND ',$cond).$orderby.$limit );
+		$all = $this->getSQL( 'SELECT `'.$dbequiv['id'].'` FROM `'.TABLE_PREFIX.$this->class->DB_table.'` WHERE '.implode(' AND ',$cond).$orderby.$limit, $params );
 		return $all;
 	}
 	
@@ -145,18 +152,24 @@ class Gestionnaire {
 	 * @return integer
 	 */
 	public function countOf(array $mixedConditions) {
+		$dbequiv = $this->class->getDBEquiv();
 		$cond = array();
+		$params = array();
         foreach ($mixedConditions as $var => $value){
+        	$pk = 'p_'.(count($params)+1);
+			$val = $value;
             if( is_array( $value ) ) {
                 //forme [var, [op, value]]
-                $cond[] = '`'.$this->class->DB_equiv[$var].'` '.$value[0].($value[1] !== null? ' \''.$value[1].'\'' : ' NULL');
+                $cond[] = '`'.$dbequiv[$var].'` '.$value[0].($value[1] !== null? ' \'{{'.$pk.'}}\'' : ' NULL');
+                $val = $value[1];
             }
             else {
                 //forme [var, value] === [var, ["=", value] ]
-                $cond[] = '`'.$this->class->DB_equiv[$var].'` = '.($value!==null?'\''.$value.'\'':' NULL');
+                $cond[] = '`'.$dbequiv[$var].'` = '.($value!==null?'\'{{'.$pk.'}}\'':' NULL');
             }
+            $params[$pk] = $val;
 		}
-		$res = SQL::getInstance()->exec('SELECT COUNT(*) as nombre FROM `'.TABLE_PREFIX.$this->class->DB_table.'` WHERE '.implode(' AND ',$cond));
+		$res = SQL::getInstance()->exec('SELECT COUNT(*) as nombre FROM `'.TABLE_PREFIX.$this->class->DB_table.'` WHERE '.implode(' AND ',$cond), false, $params);
 		if($res) { //cas ou aucun retour requete (retour FALSE)
 			$all = 0;
 			foreach ($res as $row) {
@@ -169,12 +182,13 @@ class Gestionnaire {
 		return $all;
 	}
 	
-	public function getSQL( $sqlStr ) {
-		$res = SQL::getInstance()->exec( $sqlStr );
+	public function getSQL( $sqlStr, $params = array() ) {
+		$dbequiv = $this->class->getDBEquiv();
+		$res = SQL::getInstance()->exec( $sqlStr, false, $params );
 		if($res) { //cas ou aucun retour requete (retour FALSE)
 			$all = array();
 			foreach ($res as $row) {
-				$all[] = $this->getOne($row[$this->class->DB_equiv['id']]);
+				$all[] = $this->getOne($row[$dbequiv['id']]);
 			}
 		}
 		else {

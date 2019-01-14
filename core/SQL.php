@@ -10,6 +10,8 @@ class SQL {
 	private $nb_adm_query = 0;
 	private $nb_sql_errors = 0;
 	
+	private $manualConnection = false;
+	
 	private $log;
 	
 	public static function getInstance() {
@@ -28,8 +30,8 @@ class SQL {
 	 * @param string $requete
 	 * @return array or false if no result
 	 */
-	public function exec($requete, $oneRow = false){
-		$rep = $this->_exec($requete);
+	public function exec($requete, $oneRow = false, $params = array()){
+		$rep = $this->_exec($requete, $params);
 		
 		$row = false;
 		if(strtoupper(substr($requete, 0, 6)) == 'SELECT') {
@@ -52,7 +54,7 @@ class SQL {
 		}
 
 		//on se déconnecte
-		mysql_close();
+		$this->closeConnection();
 		//on retourne le tableau de rÃ©sultat
 		return $row;
 	}
@@ -64,7 +66,7 @@ class SQL {
 	public function checkTableExists($tableName) {
 		$rep = $this->_exec("SHOW TABLES LIKE '$tableName'");
 		$row = mysql_fetch_assoc($rep);
-		mysql_close();
+		$this->closeConnection();
 		return $row !== false;
 	}
 	
@@ -75,7 +77,7 @@ class SQL {
 	 **/
 	public function createEmptyTable($tableName) {
 		$rep = $this->_exec("CREATE TABLE `$tableName` (`id` int(11) NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`), KEY `id` (`id`) )");
-		mysql_close();
+		$this->closeConnection();
 		if ( $rep === true ) {
 			$this->log->log('sql', 'info_sql', "create empty table `$tableName`", Logger::GRAN_MONTH);
 			return true;
@@ -93,7 +95,7 @@ class SQL {
 		while($res = mysql_fetch_assoc($rep)){
 			$struct[$res['Field']] = $res['Type'];
 		}
-		mysql_close();
+		$this->closeConnection();
 		return $struct;
 	}
 	
@@ -103,7 +105,7 @@ class SQL {
 	 **/
 	public function addFieldToTable($field, $type, $table) {
 		$rep = $this->_exec("ALTER TABLE `$table` ADD COLUMN `$field` $type");
-		mysql_close();
+		$this->closeConnection();
 		if ( $rep === true ) {
 			$this->log->log('sql', 'info_sql', "alter table `$table` add field `$field` '$type'", Logger::GRAN_MONTH);
 			return true;
@@ -111,14 +113,22 @@ class SQL {
 		return false;
 	}
 	
-	private function _exec($requete) {
+	private function _exec($requete, $params = array()) {
 		$this->setLastQuery($requete);
 		$this->nb_query++;
 		//on fait la connexion à mysql
-		@mysql_connect(MYSQL_SERVER,  MYSQL_USER, MYSQL_PWD);
-		@mysql_select_db(MYSQL_DB);
+		$this->openConnection();
 		
 		$this->setLastError();
+		
+		if(is_array($params) && count($params) > 0) {
+			foreach($params as $p_key => $p_value) {
+				$e_value = mysql_real_escape_string($p_value);
+				$requete = str_replace('{{'.$p_key.'}}', $e_value, $requete);
+			}
+			$this->log->log('sql', 'info_sql', '"' . $this->getLastQuery() . '"\n escaped in "' . $requete . '"', Logger::GRAN_MONTH);
+		}
+		
 		//on fait la requete
 		$rep = mysql_query($requete);
 		//debug($rep);
@@ -131,51 +141,38 @@ class SQL {
 		return $rep;
 	}
 	
-	/*
-	//execution de requete SQL reserve à l'administration
-	public function exec2($requete){
-		$this->setLastQuery($requete);
-		$this->nb_adm_query++;
-		
-		//on fait la connexion Ã  mysql
-		mysql_connect(MYSQL_SERVER,  MYSQL_USER, MYSQL_PWD);
-		mysql_select_db(MYSQL_DB);
-		
-		$this->setLastError();
-		//on fait la requete
-		$rep = mysql_query($requete);
-		//debug($rep);
-		$this->setLastError(mysql_error());
-		
-		if($this->last_sql_error != ''){
-			//echo $this->last_sql_error;
-			$this->nb_sql_errors++;
-			$this->log->log('sql', 'erreurs_sql', $this->getLastQuery() . ' : ' . $this->last_sql_error, Logger::GRAN_MONTH);
+	public function manualConnection() {
+		if($this->manualConnection === false) {
+			$this->openConnection();
+			$this->manualConnection = 1;
 		}
-		
-		$row = false;
-		if(strtoupper(substr($requete, 0, 6)) == 'SELECT') {
-			if(!is_null($rep) && !empty($rep)) {
-				if(mysql_num_rows($rep) > 1) {
-					while($res = mysql_fetch_assoc($rep)){
-						$row[] = $res;
-					}
-				}
-				else {
-					$row = mysql_fetch_assoc($rep);
-				}
-			}
+		else {
+				$this->manualConnection++;
 		}
-		elseif(strtoupper(substr($requete, 0, 6)) == 'INSERT') {
-			$row = mysql_insert_id();
-		}
-
-		//on se dÃ©connecte
-		mysql_close();
-		//on retourne le tableau de rÃ©sultat
-		return $row;
 	}
-	*/
+	
+	public function manualClose() {
+		if($this->manualConnection === 1) {
+			mysql_close();
+			$this->manualConnection = false;
+		}
+		else {
+			$this->manualConnection--;
+		}
+	}
+	
+	private function openConnection() {
+		if($this->manualConnection === false) {
+			@mysql_connect(MYSQL_SERVER,  MYSQL_USER, MYSQL_PWD);
+			@mysql_select_db(MYSQL_DB);
+		}
+	}
+	
+	private function closeConnection() {
+		if($this->manualConnection === false) {
+			mysql_close();
+		}
+	}
 	
 	public function setLastError($err = ''){
 		$this->last_sql_error = $err;

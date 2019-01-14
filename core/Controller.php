@@ -48,20 +48,18 @@ abstract class Controller {
 		$this->controllerName = $simpleName;
 		$pathView = BPCF_ROOT."/view/".$simpleName."/".$action.".phtml";
 
+		$content = "";
+
 		try {
 			if(!method_exists($subClass, $action)) {
 				throw new Exception();
 			}
-			$this->$action();
+			$content = $this->$action();
 		}
 		catch (Exception $e) {
 			throw new Exception("l'action '$action' du controller '$simpleName' n'existe pas !");
 		}
 		
-		
-		
-		
-		$content = "";
 		if( file_exists( $pathView ) ){
 			ob_start();
 			require $pathView;
@@ -73,6 +71,9 @@ abstract class Controller {
             if( $this->allowAllOrigin )
                 header("Access-Control-Allow-Origin: *");
             header('Content-type: application/json; charset=utf-8');
+            if(is_array($content)) {
+            	$content = json_encode($content);
+            }
             echo $content;
             die();
 		}
