@@ -104,7 +104,7 @@ class Site {
 				$ret = $ObjController->getAction( $this->action );
 			}
 			catch( Exception $e ) {
-				throw new Exception($e->getMessage());
+				throw $e;
 			}
 			$this->addFoot( $ObjController->getScripts() );
 			$this->addContent( $ret, strtolower($this->controller) . "-" . strtolower($this->action), 'div', array("class" => "bpcf_container") );

@@ -14,6 +14,8 @@ class SQL {
 	
 	private $log;
 	
+	private $mysql_c = null;
+	
 	public static function getInstance() {
 		if(is_null(self::$instance)) {
 		self::$instance = new SQL();
@@ -37,17 +39,17 @@ class SQL {
 		if(strtoupper(substr($requete, 0, 6)) == 'SELECT') {
 			if(!is_null($rep) && !empty($rep)) {
 				if( $oneRow ) {
-					$row = mysql_fetch_assoc($rep);
+					$row = mysqli_fetch_assoc($rep);
 				}
 				else {
-					while($res = mysql_fetch_assoc($rep)){
+					while($res = mysqli_fetch_assoc($rep)){
 						$row[] = $res;
 					}
 				}
 			}
 		}
 		elseif(strtoupper(substr($requete, 0, 6)) == 'INSERT') {
-			$row = mysql_insert_id();
+			$row = mysqli_insert_id($this->mysql_c);
 		}
 		else {
 			$row = true;
@@ -65,7 +67,7 @@ class SQL {
 	 **/
 	public function checkTableExists($tableName) {
 		$rep = $this->_exec("SHOW TABLES LIKE '$tableName'");
-		$row = mysql_fetch_assoc($rep);
+		$row = mysqli_fetch_assoc($rep);
 		$this->closeConnection();
 		return $row !== false;
 	}
@@ -86,13 +88,13 @@ class SQL {
 	}
 	
 	/**
-	 * Get table description (mysql DESCRIBE)
+	 * Get table description (mysqli DESCRIBE)
 	 * @return associated array field => type
 	 **/
 	public function getTableDescription($tableName) {
 		$rep = $this->_exec("DESCRIBE `$tableName`");
 		$struct = array();
-		while($res = mysql_fetch_assoc($rep)){
+		while($res = mysqli_fetch_assoc($rep)){
 			$struct[$res['Field']] = $res['Type'];
 		}
 		$this->closeConnection();
@@ -114,25 +116,25 @@ class SQL {
 	}
 	
 	private function _exec($requete, $params = array()) {
-		$this->setLastQuery($requete);
+		$this->setLastQuery($requete, $params);
 		$this->nb_query++;
-		//on fait la connexion à mysql
+		//on fait la connexion à mysqli
 		$this->openConnection();
 		
 		$this->setLastError();
 		
 		if(is_array($params) && count($params) > 0) {
 			foreach($params as $p_key => $p_value) {
-				$e_value = mysql_real_escape_string($p_value);
+				$e_value = mysqli_real_escape_string($this->mysql_c, $p_value);
 				$requete = str_replace('{{'.$p_key.'}}', $e_value, $requete);
 			}
-			$this->log->log('sql', 'info_sql', '"' . $this->getLastQuery() . '"\n escaped in "' . $requete . '"', Logger::GRAN_MONTH);
+			//$this->log->log('sql', 'info_sql', '"' . $this->getLastQuery() . '"\n escaped in "' . $requete . '"', Logger::GRAN_MONTH);
 		}
 		
 		//on fait la requete
-		$rep = mysql_query($requete);
+		$rep = mysqli_query($this->mysql_c, $requete);
 		//debug($rep);
-		$this->setLastError(mysql_error());
+		$this->setLastError(mysqli_error($this->mysql_c));
 		if($this->last_sql_error != ''){
 			//echo $this->last_sql_error;
 			$this->nb_sql_errors++;
@@ -153,8 +155,8 @@ class SQL {
 	
 	public function manualClose() {
 		if($this->manualConnection === 1) {
-			mysql_close();
 			$this->manualConnection = false;
+			$this->closeConnection();
 		}
 		else {
 			$this->manualConnection--;
@@ -163,14 +165,18 @@ class SQL {
 	
 	private function openConnection() {
 		if($this->manualConnection === false) {
-			@mysql_connect(MYSQL_SERVER,  MYSQL_USER, MYSQL_PWD);
-			@mysql_select_db(MYSQL_DB);
+			mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+			$this->mysql_c = @mysqli_connect(MYSQL_SERVER,  MYSQL_USER, MYSQL_PWD, MYSQL_DB);
+			if (!$this->mysql_c) {
+				echo 'mysqli_connect error : ' . mysqli_connect_errno();
+			}
+			// @mysqli_select_db(MYSQL_DB);
 		}
 	}
 	
 	private function closeConnection() {
 		if($this->manualConnection === false) {
-			mysql_close();
+			mysqli_close($this->mysql_c);
 		}
 	}
 	
@@ -182,8 +188,17 @@ class SQL {
 		return $this->last_sql_error;
 	}
 	
-	public function setLastQuery($q = null){
-		$this->last_sql_query = $q;
+	public function setLastQuery($q = null, $params = array()){
+		$p_a = array();
+		$p_str = "";
+		if(is_array($params) && count($params) > 0) {
+			$p_str = " with params [";
+			foreach($params as $p_key => $p_value) {
+				$p_a[] = "[$p_key:$p_value]";
+			}
+			$p_str .= implode(', ', $p_a) . "]";
+		}
+		$this->last_sql_query = $q . $p_str;
 	}
 	
 	public function getLastQuery() {

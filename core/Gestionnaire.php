@@ -188,7 +188,13 @@ class Gestionnaire {
 		if($res) { //cas ou aucun retour requete (retour FALSE)
 			$all = array();
 			foreach ($res as $row) {
-				$all[] = $this->getOne($row[$dbequiv['id']]);
+				$e = $this->getOne($row[$dbequiv['id']]);
+				foreach($row as $k => $v) {
+					if(!isset($dbequiv[$k])) {
+						$e->$k = $v;
+					}
+				}
+				$all[] = $e;
 			}
 		}
 		else {
@@ -197,9 +203,9 @@ class Gestionnaire {
 		return $all;
 	}
 	
-	public function countSQL( $qlStr ) {
-		$slqCount = 'SELECT COUNT(*) as nombre FROM ('.$qlStr.') selectcount';
-		$res = SQL::getInstance()->exec( $slqCount );
+	public function countSQL( $sqlStr, $params = array() ) {
+		$slqCount = 'SELECT COUNT(*) as nombre FROM ('.$sqlStr.') selectcount';
+		$res = SQL::getInstance()->exec( $slqCount, false, $params );
 		if($res) { //cas ou aucun retour requete (retour FALSE)
 			$all = 0;
 			foreach ($res as $row) {

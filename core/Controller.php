@@ -52,12 +52,12 @@ abstract class Controller {
 
 		try {
 			if(!method_exists($subClass, $action)) {
-				throw new Exception();
+				throw new Exception("l'action '$action' du controller '$simpleName' n'existe pas !");
 			}
 			$content = $this->$action();
 		}
 		catch (Exception $e) {
-			throw new Exception("l'action '$action' du controller '$simpleName' n'existe pas !");
+			throw new Exception($e->getMessage(), 0, $e);
 		}
 		
 		if( file_exists( $pathView ) ){

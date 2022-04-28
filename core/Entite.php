@@ -107,7 +107,15 @@ class Entite implements JsonSerializable {
 		foreach ($values as $key => $value){
 			$db_equiv = array_flip($dbequiv); //on inverse les clees et le valeurs pour utiliser les valeurs en tant que clees
 			$var = $db_equiv[$key];
-			$this->$var = (stripslashes($value));
+			if($value === null) {
+				$this->$var = null;
+			}
+			elseif (is_numeric($value)) {
+				$this->$var = $value;
+			}
+			else {
+				$this->$var = (stripslashes($value));
+			}
 		}
 	}
 	
@@ -147,7 +155,10 @@ class Entite implements JsonSerializable {
 			$toSet = array();
 			foreach ($dbequiv as $key => $value) {
 				if($key != 'id' && !is_null($this->$key) && in_array($key,$toUpdate)) {
-					if(is_int($this->$key)) {
+					if($this->$key === null) {
+						$toSet[] = ' `'.$value.'` = NULL';
+					}
+					elseif(is_numeric($this->$key)) {
 						$toSet[] = ' `'.$value.'` = '.$this->$key;
 					}
 					else {
@@ -168,7 +179,10 @@ class Entite implements JsonSerializable {
 			foreach ($dbequiv as $key => $value) {
 				if($key != 'id' && !is_null($this->$key)) {
 					$column[] = $value;
-					if(is_int($this->$key)) {
+					if($this->$key === null) {
+						$values[] = 'NULL';
+					}
+					elseif(is_numeric($this->$key)) {
 						$values[] = $this->$key;
 					}
 					else {
@@ -233,9 +247,8 @@ class Entite implements JsonSerializable {
     * @return array of public class properties
     */
     private function getPublicProperties() {
-        $publicVars = create_function('$obj', 'return get_object_vars($obj);');
-        $properties = $publicVars($this);
-        return array_keys($properties);
+        $properties = (new ReflectionClass($this))->getProperties(ReflectionProperty::IS_PUBLIC);
+        return array_map(function($prop) { return $prop->getName(); }, $properties);
     }
     
     /**
