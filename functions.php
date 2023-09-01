@@ -237,6 +237,13 @@ function toBytes($str){
     }
     return $val;
 }
+
+function human_filesize($bytes, $decimals = 2) {
+  $sz = ' KMGTP';
+  $factor = floor((strlen($bytes) - 1) / 3);
+  return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . @$sz[$factor] . 'o';
+}
+
 /**
  * Cr�e une nouvelle image redimentionn�e � partir de $urlImage
  * @param String $urlImage adresse locale de l'image d'origine
@@ -246,6 +253,14 @@ function toBytes($str){
  * @return String url de la nouvelle image, par defaut de la forme {basename($urlImage)}.min{resizeType}{resizeSize}.{extention} ou false en cas d'erreur 
  */
 function redimJPEG($urlImage,$resizeSize = 500, $resizeType = 'H', $newUrl = 'default'){
+	if (exif_imagetype($urlImage) == IMAGETYPE_PNG) {
+		$im = imagecreatefrompng($urlImage);
+		$urlImage .= '.jpeg';
+		imagejpeg($im, $urlImage);
+		if ($newUrl != 'deafult') {
+			$newUrl .= '.jpeg';
+		}
+	}
 	if($imageOrigine = imagecreatefromjpeg($urlImage) or die('erreur')){
 		$tailleOrigine = getimagesize($urlImage, $info);
 		if($resizeType == 'L'){
@@ -414,7 +429,7 @@ function getBBCodeFromOneAlbum(Bdmap_Album $album, $photoEncapsuleUrl = false, $
 	return $bbcode;
 }
 
-function __autoload($className){
+function autoload($className){
 	$class = str_replace('_', '/', $className);
 	$classArray = explode("/", $class);
 	$newClassArray = array();
@@ -446,8 +461,10 @@ function __autoload($className){
 	elseif ( file_exists( BPCF.'/'.$classPath.'.php' ) ) {
 		require_once BPCF.'/'.$classPath.'.php';
 	}
-//	echo $className . " imported<br/>";
+	// echo $className . " imported from '$classPath'\n";
 }
+
+spl_autoload_register('autoload');
 
 function emu_getallheaders() {
         foreach ($_SERVER as $name => $value)

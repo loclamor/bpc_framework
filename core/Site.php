@@ -138,7 +138,7 @@ class Site {
 			}
 		}
 		catch (Exception $e) {
-			throw new Exception("Une erreur est survenue : " . $e->getMessage());
+			throw new Exception("Une erreur est survenue : " . $e->getMessage(), 500, $e);
 		}
 
 	}
@@ -256,6 +256,14 @@ class Site {
 	 */
 	public function getMessageInfos($impl = '<br/>') {
 		return implode($impl,$this->infos);
+	}
+	
+	/**
+	 * Ajoute du contenu dans le titre de la page
+	 * @param string|string[] contenu
+	 */
+	public function addTitle($content, $end=true) {
+		$this->addElement('title', $content, $end);
 	}
 	
 	/**

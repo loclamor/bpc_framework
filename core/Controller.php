@@ -37,24 +37,24 @@ abstract class Controller {
 		$this->log->log('controllers', $this->className, $this->loggerBaseString . " " . $msg, Logger::GRAN_MONTH);
 	}
 	
-	public function getAction( $action ){
-		$action = firstchartolower( $action );
-		$this->actionName = $action;
+	public function getAction( $_action ){
+		$_action = firstchartolower( $_action );
+		$this->actionName = $_action;
 		
 		$subClass = get_class($this);
 		$this->className = $subClass;
 
 		$simpleName = firstchartolower( str_replace( "Controller_", "", $subClass ) );
 		$this->controllerName = $simpleName;
-		$pathView = BPCF_ROOT."/view/".$simpleName."/".$action.".phtml";
+		$pathView = BPCF_ROOT."/view/".$simpleName."/".$_action.".phtml";
 
 		$content = "";
 
 		try {
-			if(!method_exists($subClass, $action)) {
-				throw new Exception("l'action '$action' du controller '$simpleName' n'existe pas !");
+			if(!method_exists($subClass, $_action)) {
+				throw new Exception("l'action '$_action' du controller '$simpleName' n'existe pas !");
 			}
-			$content = $this->$action();
+			$content = $this->$_action();
 		}
 		catch (Exception $e) {
 			throw new Exception($e->getMessage(), 0, $e);
@@ -78,7 +78,7 @@ abstract class Controller {
             die();
 		}
 
-		return '<div id="'.$simpleName.'-'.$action.'" >'.$content.'</div>';
+		return '<div id="'.$simpleName.'-'.$_action.'" >'.$content.'</div>';
 	}
 	
 	public function getScripts() {

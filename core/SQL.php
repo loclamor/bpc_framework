@@ -130,7 +130,10 @@ class SQL {
 			}
 			//$this->log->log('sql', 'info_sql', '"' . $this->getLastQuery() . '"\n escaped in "' . $requete . '"', Logger::GRAN_MONTH);
 		}
-		
+		if (true) {
+			$this->log->log('sql', 'debug_sql', $this->getLastQuery(), Logger::GRAN_MONTH);
+			$this->log->log('sql', 'debug_sql', $requete, Logger::GRAN_MONTH);
+		}
 		//on fait la requete
 		$rep = mysqli_query($this->mysql_c, $requete);
 		//debug($rep);

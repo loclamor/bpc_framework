@@ -42,7 +42,7 @@ class Gestionnaire {
 		$parts = explode(',', $orderby);
 		foreach($parts as $part) {
 			$p_part = explode(' ', trim($part));
-			$cleaned[] = '`'.trim($p_part[0]).'`'.(count($p_part)>1?' '.trim($p_part[1]):'');
+			$cleaned[] = 'te.`'.trim($p_part[0]).'`'.(count($p_part)>1?' '.trim($p_part[1]):'');
 		}
 		return implode(', ', $cleaned);
 	}
@@ -62,7 +62,21 @@ class Gestionnaire {
 		}
 	}
 	
-	public function getAll($orderby = 'id', $desc = false) {
+	/**
+	 * 
+	 * @param int $page index de la page 
+	 * @param int $length longueur de la page
+	 * @param string $orderby colone de tri
+	 * @param boolean $desc tri DESC ou pas 
+	 * @param array $mixedConditions conditions de filtre [var: value] ou [var: [op, value]] (WHERE var = value AND ...)
+	 */
+	public function getPaginate($page = 1, $length = 25, $orderby = 'id', $desc = false, array $mixedConditions = [], $join = '') {
+		$limit = $length;
+		$offset = ($page -1) * $length;
+		return $this->getOf($mixedConditions, $orderby, $desc, $offset, $limit, $join);
+	}
+	
+	public function getAll($orderby = 'id', $desc = false, $limit = null, $offset = 0) {
 		$dbequiv = $this->class->getDBEquiv();
 		if(!is_null($orderby) && !empty($orderby)) {
 			$desc = $desc?' DESC':' ASC';
@@ -71,7 +85,11 @@ class Gestionnaire {
 		else {
 			$orderby = '';
 		}
-		$all = $this->getSQL('SELECT '.$dbequiv['id'].' FROM `'.TABLE_PREFIX.$this->class->DB_table.'`'.$orderby);
+		$limitclause = '';
+		if (!is_null($limit)) {
+			$limitclause = " LIMIT $offset, $limit";
+		}
+		$all = $this->getSQL('SELECT '.$dbequiv['id'].' FROM `'.TABLE_PREFIX.$this->class->DB_table.'` te'.$orderby.$limitclause);
 		return $all;
 	}
 	
@@ -98,7 +116,7 @@ class Gestionnaire {
 	 * @param integer $limitUp [optional, default 0] si $limitUp > $limitDown alors (LIMIT $limitDown, $limitUp)
 	 * @return Array<Entite> ($this->class) ou false si pas de resultat
 	 */
-	public function getOf(array $mixedConditions, $orderby = 'id', $desc = false, $limitDown = 0, $limitUp = 0) {
+	public function getOf(array $mixedConditions, $orderby = 'id', $desc = false, $offset = 0, $limit = 0, $join = '') {
 		$dbequiv = $this->class->getDBEquiv();
 		if(!is_null($orderby) && !empty($orderby)) {
 			$desc = $desc?' DESC':' ASC';
@@ -107,29 +125,34 @@ class Gestionnaire {
 		else {
 			$orderby = '';
 		}
-		if($limitUp > $limitDown){
-			$limit = ' LIMIT '.$limitDown.', '.$limitUp;
+		if($limit > 0){
+			$limit = ' LIMIT '.$offset.', '.$limit;
 		}
 		else {
 			$limit = '';
 		}
-		$cond = array();
+		$conditions = '';
 		$params = array();
-		foreach ($mixedConditions as $var => $value){
-			$pk = 'p_'.(count($params)+1);
-			$val = $value;
-            if( is_array( $value ) ) {
-                //forme [var, [op, value]]
-                $cond[] = '`'.$dbequiv[$var].'` '.$value[0].($value[1] !== null? ' \'{{'.$pk.'}}\'' : ' NULL');
-                $val = $value[1];
-            }
-            else {
-                //forme [var, value] === [var, ["=", value] ]
-                $cond[] = '`'.$dbequiv[$var].'` = '.($value!==null?'\'{{'.$pk.'}}\'':' NULL');
-            }
-            $params[$pk] = $val;
+		if (is_array($mixedConditions) && count($mixedConditions) > 0) {
+			$cond = array();
+			foreach ($mixedConditions as $var => $value){
+				$pk = 'p_'.(count($params)+1);
+				$val = $value;
+	            if( is_array( $value ) ) {
+	                //forme [var: [op, value]]
+	                $cond[] = 'te.`'.$dbequiv[$var].'` '.$value[0].($value[1] !== null? ' \'{{'.$pk.'}}\'' : ' NULL');
+	                $val = $value[1];
+	            }
+	            else {
+	                //forme [var: value] === [var: ["=", value] ]
+	                $cond[] = 'te.`'.$dbequiv[$var].'` = '.($value!==null?'\'{{'.$pk.'}}\'':' NULL');
+	            }
+	            $params[$pk] = $val;
+			}
+			$conditions = 'WHERE '.implode(' AND ',$cond);
 		}
-		$all = $this->getSQL( 'SELECT `'.$dbequiv['id'].'` FROM `'.TABLE_PREFIX.$this->class->DB_table.'` WHERE '.implode(' AND ',$cond).$orderby.$limit, $params );
+		$join = " $join ";
+		$all = $this->getSQL( 'SELECT te.`'.$dbequiv['id'].'` FROM `'.TABLE_PREFIX.$this->class->DB_table.'` as te '.$join.$conditions.$orderby.$limit, $params );
 		return $all;
 	}
 	
@@ -138,8 +161,8 @@ class Gestionnaire {
 	 * @param array $mixedConditions [var: value] or [var, [op, value]] (WHERE var = value AND ...)
 	 * @return Entite $this->class ou false si pas de r�sultat
 	 */
-	public function getOneOf(array $mixedConditions, $orderby = 'id', $desc = false){
-		$ret = $this->getOf($mixedConditions, $orderby, $desc, 0, 1);
+	public function getOneOf(array $mixedConditions, $orderby = 'id', $desc = false, $join = ''){
+		$ret = $this->getOf($mixedConditions, $orderby, $desc, 0, 1, $join);
 		if($ret !== false){
 			return $ret[0];
 		}
@@ -151,25 +174,30 @@ class Gestionnaire {
 	 * @param array $mixedConditions [var: value] or [var : [op, value]] (WHERE var = value AND ...)
 	 * @return integer
 	 */
-	public function countOf(array $mixedConditions) {
+	public function countOf(array $mixedConditions, $join = '') {
 		$dbequiv = $this->class->getDBEquiv();
-		$cond = array();
+		$conditions = '';
 		$params = array();
-        foreach ($mixedConditions as $var => $value){
-        	$pk = 'p_'.(count($params)+1);
-			$val = $value;
-            if( is_array( $value ) ) {
-                //forme [var, [op, value]]
-                $cond[] = '`'.$dbequiv[$var].'` '.$value[0].($value[1] !== null? ' \'{{'.$pk.'}}\'' : ' NULL');
-                $val = $value[1];
-            }
-            else {
-                //forme [var, value] === [var, ["=", value] ]
-                $cond[] = '`'.$dbequiv[$var].'` = '.($value!==null?'\'{{'.$pk.'}}\'':' NULL');
-            }
-            $params[$pk] = $val;
+		if (is_array($mixedConditions) && count($mixedConditions) > 0) {
+			$cond = array();
+	        foreach ($mixedConditions as $var => $value){
+	        	$pk = 'p_'.(count($params)+1);
+				$val = $value;
+	            if( is_array( $value ) ) {
+	                //forme [var, [op, value]]
+	                $cond[] = 'te.`'.$dbequiv[$var].'` '.$value[0].($value[1] !== null? ' \'{{'.$pk.'}}\'' : ' NULL');
+	                $val = $value[1];
+	            }
+	            else {
+	                //forme [var, value] === [var, ["=", value] ]
+	                $cond[] = 'te.`'.$dbequiv[$var].'` = '.($value!==null?'\'{{'.$pk.'}}\'':' NULL');
+	            }
+	            $params[$pk] = $val;
+			}
+			$conditions = 'WHERE '.implode(' AND ',$cond);
 		}
-		$res = SQL::getInstance()->exec('SELECT COUNT(*) as nombre FROM `'.TABLE_PREFIX.$this->class->DB_table.'` WHERE '.implode(' AND ',$cond), false, $params);
+		$join = " $join ";
+		$res = SQL::getInstance()->exec('SELECT COUNT(*) as nombre FROM `'.TABLE_PREFIX.$this->class->DB_table.'` as te '.$join.$conditions, false, $params);
 		if($res) { //cas ou aucun retour requete (retour FALSE)
 			$all = 0;
 			foreach ($res as $row) {

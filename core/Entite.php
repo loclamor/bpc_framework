@@ -139,6 +139,28 @@ class Entite implements JsonSerializable {
 	}
 	
 	/**
+	 * hydrate une entité à partir d'un tableau associatif clé/valeur où la clé est le nom de l'attribut de l'entité et la valeur la valeur à setter.
+	 * @return array{key, old, new}[] for modified values
+	 */
+	public function hydrater($arr_values) {
+		$modified = []; 
+		if (!is_array($arr_values)) {
+			throw new Exception('Entite::hydrater doit prendre un array en entré');
+		}
+		foreach ($arr_values as $key => $value) {
+			if (!array_key_exists($key, $this->DB_equiv)) {
+				$this->log("tentative d'hydratation de la propriété '$key' avec la valeur '$value'");
+				continue;
+			}
+			if ($this->$key != $value) {
+				$modified[] = [$key, $this->$key, $value];
+				$this->$key = $value;
+			}
+		}
+		return $modified;
+	}
+	
+	/**
 	 * save the Entite in database
 	 * @param Array $toUpdate [optional] list the classMembers attributes to update in database. If null, all attributes will be updated
 	 * $toUpdate is not used in case of first save (SQL Insert)
@@ -191,7 +213,7 @@ class Entite implements JsonSerializable {
 				}
 			}
 			//debug($column);debug($values);
-			$requete .= '('.implode(', ',$column).') VALUES('.implode(', ',$values).')';
+			$requete .= '(`'.implode('`, `',$column).'`) VALUES('.implode(', ',$values).')';
 			$insertID = SQL::getInstance()->exec($requete);
 			$this->id = $insertID;
             //update the Entite with default values from database if any
